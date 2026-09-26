@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 24px;
+            color: #e5e7eb;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e3a8a);
+        }
+
+        .card {
+            width: min(900px, 100%);
+            margin: auto;
+            padding: 28px;
+            border-radius: 20px;
+            background: rgba(15, 23, 42, .9);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+        }
+
+        h1, h2, h3, p {
+            margin-top: 0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #7dd3fc;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 13px;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: white;
+            background: #1e293b;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #082f49;
+            background: #7dd3fc;
+        }
+
+        button:hover {
+            background: #38bdf8;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 8px;
+        }
+
+        .btn-gps {
+            width: 100%;
+            margin-top: 12px;
+            color: white;
+            background: #334155;
+        }
+
+        .btn-gps:hover {
+            background: #475569;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            color: #fecaca;
+            background: #7f1d1d;
+        }
+
+        .weather {
+            margin-top: 28px;
+        }
+
+        .summary {
+            text-align: center;
+        }
+
+        .city-title {
+            margin-bottom: 8px;
+            color: #bae6fd;
+        }
+
+        .icon-large {
+            font-size: 64px;
+        }
+
+        .live-temp {
+            font-size: 56px;
+            font-weight: bold;
+        }
+
+        .live-desc,
+        .feels-like {
+            color: #cbd5e1;
+        }
+
+        .details,
+        .forecast {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .detail,
+        .forecast-card {
+            padding: 16px;
+            border-radius: 12px;
+            background: #1e293b;
+        }
+
+        .detail strong {
+            display: block;
+            margin-top: 6px;
+            color: #bae6fd;
+        }
+
+        .forecast-card {
+            text-align: center;
+        }
+
+        .forecast-icon {
+            font-size: 32px;
+        }
+
+        .chart-container {
+            margin-top: 28px;
+            padding: 16px;
+            border-radius: 12px;
+            background: #1e293b;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            .live-temp {
+                font-size: 44px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Weather</h1>
+
+        <form id="weatherForm" method="POST">
+            <input type="hidden" name="lat" id="geoLat" value="{{ lat or '' }}">
+            <input type="hidden" name="lon" id="geoLon" value="{{ lon or '' }}">
+
+            <div class="search-container">
+                <input
+                    type="text"
+                    name="city"
+                    id="city"
+                    placeholder="Enter city name..."
+                    value="{{ city or '' }}"
+                    autocomplete="off"
+                >
+
+                <div class="toggle-group">
+                    <input type="radio" id="unitC" name="unit" value="C"
+                           {% if unit == "C" %}checked{% endif %}>
+                    <label for="unitC">°C</label>
+
+                    <input type="radio" id="unitF" name="unit" value="F"
+                           {% if unit == "F" %}checked{% endif %}>
+                    <label for="unitF">°F</label>
+                </div>
+
+                <button type="submit">Search</button>
+            </div>
+        </form>
+
+        <button class="btn-gps" type="button" id="gpsButton">
+            📍 Use My Current Location
+        </button>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        {% if weather %}
+            <section class="weather">
+                <div class="summary">
+                    <h2 class="city-title">{{ weather.city }}</h2>
+                    <div class="icon-large">{{ weather.live_icon }}</div>
+                    <div class="live-temp">
+                        {{ weather.live_temp }}°{{ unit }}
+                    </div>
+                    <p class="live-desc">{{ weather.live_desc }}</p>
+                    <p class="feels-like">
+                        Feels like {{ weather.live_feels }}°{{ unit }}
+                    </p>
+                </div>
+
+                <div class="details">
+                    <div class="detail">
+                        Humidity
+                        <strong>{{ weather.live_humidity }}%</strong>
+                    </div>
+                    <div class="detail">
+                        Pressure
+                        <strong>{{ weather.live_pressure }} hPa</strong>
+                    </div>
+                    <div class="detail">
+                        Visibility
+                        <strong>{{ weather.live_visibility }}</strong>
+                    </div>
+                    <div class="detail">
+                        Wind
+                        <strong>{{ weather.live_wind }} {{ "m/s" if unit == "C" else "mph" }}</strong>
+                    </div>
+                </div>
+
+                <div class="forecast">
+                    <div class="forecast-card">
+                        <h3>Today</h3>
+                        <div class="forecast-icon">{{ weather.today.icon }}</div>
+                        <p>{{ weather.today.cond }}</p>
+                        <strong>{{ weather.today.min }}° / {{ weather.today.max }}°</strong>
+                    </div>
+
+                    <div class="forecast-card">
+                        <h3>Tomorrow</h3>
+                        <div class="forecast-icon">{{ weather.tomorrow.icon }}</div>
+                        <p>{{ weather.tomorrow.cond }}</p>
+                        <strong>{{ weather.tomorrow.min }}° / {{ weather.tomorrow.max }}°</strong>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </section>
+        {% else %}
+            <p style="margin-top: 28px; text-align: center;">
+                🌍 Enter a city or use GPS to fetch weather details.
+            </p>
+        {% endif %}
+    </main>
+
+    <script>
+        const form = document.getElementById("weatherForm");
+        const cityInput = document.getElementById("city");
+        const latInput = document.getElementById("geoLat");
+        const lonInput = document.getElementById("geoLon");
+
+        cityInput.addEventListener("input", () => {
+            latInput.value = "";
+            lonInput.value = "";
+        });
+
+        document.querySelectorAll('input[name="unit"]').forEach((input) => {
+            input.addEventListener("change", () => form.submit());
+        });
+
+        document.getElementById("gpsButton").addEventListener("click", () => {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by this browser.");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    latInput.value = position.coords.latitude;
+                    lonInput.value = position.coords.longitude;
+                    cityInput.value = "";
+                    form.submit();
+                },
+                () => {
+                    alert("Location access was denied or unavailable.");
+                }
+            );
+        });
+
+        {% if weather %}
+        new Chart(document.getElementById("hourlyChart"), {
+            type: "line",
+            data: {
+                labels: {{ weather.chart_labels | tojson }},
+                datasets: [{
+                    label: "Temperature (°{{ unit }})",
+                    data: {{ weather.chart_temps | tojson }},
+                    borderColor: "#38bdf8",
+                    backgroundColor: "rgba(56, 189, 248, .15)",
+                    fill: true,
+                    tension: .35
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: "#e5e7eb" } }
+                },
+                scales: {
+                    x: { ticks: { color: "#cbd5e1" } },
+                    y: { ticks: { color: "#cbd5e1" } }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>
